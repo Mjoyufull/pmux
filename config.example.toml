@@ -1,0 +1,216 @@
+# ============================================================================
+# pmux Configuration File
+# ============================================================================
+# This file will be automatically created at: ~/.config/pmux/config.toml
+# Copy this example and customize it to your liking!
+#
+# Color formats supported (case-insensitive):
+#   - Named colors: "Red", "Green", "Blue", "Cyan", "Magenta", "Yellow", 
+#                   "White", "Black", "Gray", "DarkGray"
+#                   "LightRed", "LightGreen", "LightBlue", "LightYellow",
+#                   "LightCyan", "LightMagenta"
+#   - Hex colors: "#ff0000", "#00ff00", "#0000ff"
+#
+# Examples:
+#   focused_border = "LightBlue"    # Named color
+#   focused_border = "lightblue"    # Case-insensitive
+#   focused_border = "#00ffff"      # Hex equivalent
+# ============================================================================
+
+[main]
+# ============================================================================
+# Main Settings
+# ============================================================================
+
+# Privilege escalation command
+# Use "sudo" for most systems, "doas" for OpenBSD/Alpine, or custom wrapper
+sudoers = "sudo"
+
+# Border style
+# true  = Rounded corners (╭─╮│╰─╯)
+# false = Plain corners (┌─┐│└─┘)
+rounded_borders = false
+
+
+[layout]
+# ============================================================================
+# Layout Configuration
+# ============================================================================
+
+# Width of the right column (installed packages list) as percentage
+# Range: 10-50 (recommended: 25-35)
+right_column_width_percent = 30
+
+# Height of the input field in lines
+# Range: 1-5 (recommended: 3)
+input_field_height = 3
+
+# The following are reserved for future features:
+installed_list_percent = 50
+terminal_percent = 50
+
+
+[border_colours]
+# ============================================================================
+# Border Colors for Each Panel
+# ============================================================================
+
+# Results panel border (left side, top section)
+results_unit = "#ffffff"
+
+# Input panel border (left side, middle section)
+# Note: Currently uses results_unit color
+
+# Description panel border (left side, bottom section)
+description_unit = "#ffffff"
+
+# Installed packages panel border (right side)
+installed_list_unit = "#ffffff"
+
+# Terminal panel border (reserved for future use)
+terminal_unit = "#ffffff"
+
+# Focused panel border highlight
+# This color is applied to the border of the currently focused panel
+# (switches between results and installed with Tab or mouse)
+# You can use color names like "LightBlue" or hex like "#00ffff"
+focused_border = "LightCyan"
+
+
+[text_colours]
+# ============================================================================
+# Text Colors for Each Panel
+# ============================================================================
+
+# Results panel - normal text color
+results_unit_text = "#ffffff"
+
+# Results panel - highlighted/selected item color
+results_unit_highlight_text = "LightGreen"
+
+# Description panel - normal text color
+description_unit_text = "#ffffff"
+
+# Description panel - package name highlight color
+description_unit_highlight_text = "LightGreen"
+
+# Installed panel - normal text color
+installed_list_unit_text = "#ffffff"
+
+# Installed panel - highlight color (reserved for future use)
+installed_list_unit_highlight_text = "#00ff00"
+
+# Terminal panel - normal text (reserved for future use)
+terminal_unit_text = "#ffffff"
+
+# Terminal panel - highlight text (reserved for future use)
+terminal_unit_highlight_text = "#00ff00"
+
+# Panel titles color (Results, Input, Description, Installed)
+unit_title_text = "#ffffff"
+
+
+[pm]
+# ============================================================================
+# Package Manager Configuration
+# ============================================================================
+
+# Host/primary package manager
+# This PM will be prioritized in search results and shown first
+# Options: "pacman", "dnf", "nix", "emerge"
+hostpm = "pacman"
+
+# Enabled package managers (in order of priority)
+# 
+# DEFAULT BEHAVIOR (field not present):
+#   Only the host PM is enabled. This is the recommended setting for most users
+#   who only have one package manager installed. Fast startup, minimal overhead.
+#   Just comment out or remove the enabled_pm line below.
+#
+# ENABLE ALL PMs (enabled_pm = []):
+#   Empty list enables ALL available package managers. For power users on
+#   Bedrock Linux or multi-PM setups. Host PM loads first, others in background.
+#
+# SPECIFIC PMs (enabled_pm = ["list"]):
+#   Explicitly list package managers you want. Host PM is always included.
+#
+# Available options:
+#   "pacman" - Arch Linux official repositories
+#   "paru"   - AUR (Arch User Repository) via paru/yay
+#   "dnf"    - Fedora/RHEL/CentOS
+#   "nix"    - Nix package manager
+#   "emerge" - Gentoo Portage
+#
+# Example: Default (only host PM) - comment out or remove this line:
+# enabled_pm = []
+#
+# Example: Enable ALL available PMs (Bedrock Linux users):
+# enabled_pm = []
+#
+# Example: Enable specific PMs:
+# enabled_pm = ["pacman", "paru", "nix"]
+
+
+# ============================================================================
+# Usage Examples
+# ============================================================================
+#
+# Command Line:
+#   pmux                    - Open TUI browser
+#   pmux firefox            - Quick search for firefox
+#   pmux -Ss firefox        - Same (pacman-style)
+#   pmux @aur               - Show only AUR packages
+#   pmux @aur firefox       - Filter to AUR + search firefox
+#   pmux -S firefox         - Install firefox directly (no TUI)
+#
+# In TUI:
+#   Type to search          - Fuzzy search packages
+#   @aur firefox            - Filter to AUR + search firefox
+#   Ctrl+Space              - Select/deselect package
+#   Enter                   - Install selected packages
+#   Tab                     - Switch focus (results ↔ installed)
+#   Mouse hover             - Highlight items
+#   Mouse click             - Select package
+#   Mouse scroll            - Scroll panels
+#   Esc or q                - Exit
+#
+# Keybinds:
+#   j/k or Up/Down          - Navigate
+#   Ctrl+U/Ctrl+D           - Half page scroll
+#   Home/End                - Jump to start/end
+#   Ctrl+L                  - Clear search
+#   Backspace               - Delete character
+#
+# ============================================================================
+# Third-Party Repositories
+# ============================================================================
+# pmux automatically detects enabled third-party repos from your system:
+#
+# Pacman (/etc/pacman.conf):
+#   - chaotic-aur, archlinuxcn, blackarch, etc.
+#   - Any repo defined in pacman.conf will be synced
+#
+# DNF (/etc/yum.repos.d/*.repo):
+#   - rpmfusion, terra, copr repos, etc.
+#   - Only repos with "enabled=1" are synced
+#
+# Gentoo (/etc/portage/repos.conf/):
+#   - Overlays like guru, gentoo-zh, etc.
+#   - All configured overlays are detected
+#
+# Nix:
+#   - Uses nixpkgs unstable channel by default
+#   - Flakes support coming soon
+#
+# No manual configuration needed - pmux reads your system config!
+# ============================================================================
+
+# ============================================================================
+# Cache
+# ============================================================================
+# Package lists are cached in ~/.cache/pmux/ for 1 hour
+# First run will be slow (parsing databases)
+# Subsequent runs will be instant (loading from cache)
+#
+# To clear cache: rm -rf ~/.cache/pmux/
+# ============================================================================

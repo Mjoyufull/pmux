@@ -1,0 +1,34 @@
+# pmux configuration file
+# This file will be created at ~/.config/pmux/config.toml
+# See config.example.toml for detailed documentation
+
+[main]
+sudoers = "sudo"
+rounded_borders = false
+
+[layout]
+right_column_width_percent = 30
+input_field_height = 3
+installed_list_percent = 50
+terminal_percent = 50
+
+[border_colours]
+installed_list_unit = "#ffffff"
+terminal_unit = "#ffffff"
+description_unit = "#ffffff"
+results_unit = "#ffffff"
+focused_border = "#00ffff"
+
+[text_colours]
+results_unit_text = "#ffffff"
+description_unit_highlight_text = "#00ff00"
+results_unit_highlight_text = "#00ff00"
+terminal_unit_highlight_text = "#00ff00"
+installed_list_unit_highlight_text = "#00ff00"
+terminal_unit_text = "#ffffff"
+installed_list_unit_text = "#ffffff"
+description_unit_text = "#ffffff"
+
+[pm]
+hostpm = "dnf"
+enabled_pm = []
