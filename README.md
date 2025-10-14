@@ -6,20 +6,36 @@ A fast package manager multiplexer with a TUI. Works across pacman, dnf, nix, em
 
 pmux lets you browse and install packages from multiple package managers in one interface. It's built for speed - sub-200ms startup times and instant search across tens of thousands of packages.
 
+**Key Features:**
+- **Fast TUI interface** with package descriptions displayed prominently
+- **Multi-PM support** - pacman, AUR, dnf, nix, emerge in one tool
+- **Instant search** across 80k+ packages with fuzzy matching
+- **Smart caching** with binary format and memory mapping
+- **Mouse support** - click, scroll, hover interactions
+- **Bedrock Linux ready** - automatically detects strata
+
 Works great on Bedrock Linux or any system with multiple package managers installed.
 
-## Building from source
+## Installation
 
-You'll need Rust installed. Then:
-
+### From source (Rust)
 ```bash
-git clone https://github.com/yourusername/pmux
+git clone https://github.com/Mjoyufull/pmux
 cd pmux
 cargo build --release
 sudo cp target/release/pmux /usr/local/bin/
 ```
 
-First time setup:
+### With Nix
+```bash
+# Using flakes
+nix run github:Mjoyufull/pmux
+
+# Or install
+nix profile install github:Mjoyufull/pmux
+```
+
+### First time setup
 ```bash
 pmux -Syy  # Sync repos and build cache
 ```
@@ -45,7 +61,7 @@ pmux -Qi firefox  # Package info
 
 ### Keys
 
-- `j/k` or arrows - move around
+- `Alt+j/Alt+k` or arrows - move around
 - `Ctrl+Space` - select/deselect package
 - `Enter` - install selected packages
 - `Tab` - switch between results and installed list
@@ -120,6 +136,26 @@ It uses a custom binary cache format with memory mapping for instant loads. Only
 
 Performance logging goes to `/tmp/pmux_performance.log` if you want to see what's taking time.
 
+## Package Information Display
+
+pmux shows package information in this order for better usability:
+
+```
+*  sci-electronics/kicad-footprints
+      Description:   Electronic Schematic and PCB design tools footprint libraries
+      Latest version available: 9.0.0
+      Latest version installed: [ Not Installed ]
+      Size of files: 20,775 KiB
+      Homepage:      https://gitlab.com/kicad/libraries/kicad-footprints
+      License:       CC-BY-SA-4.0
+```
+
+The description appears first to help you quickly understand what each package does.
+
+## Version
+
+Current version: **1.0.0-ktk** - First stable release ready for production use.
+
 ## License
 
-GPL-3.0
+MIT

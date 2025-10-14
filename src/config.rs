@@ -108,6 +108,42 @@ fn default_green() -> String {
     "#00ff00".to_string()
 }
 fn default_hostpm() -> String {
+    detect_host_pm()
+}
+
+// Auto-detect the host package manager by checking for database files
+fn detect_host_pm() -> String {
+    use std::path::Path;
+
+    // Check for package manager databases in order of preference
+
+    // Arch Linux - pacman
+    if Path::new("/var/lib/pacman").exists() {
+        return "pacman".to_string();
+    }
+
+    // Fedora/RHEL/CentOS - dnf/yum
+    if Path::new("/var/lib/rpm").exists() || Path::new("/var/lib/dnf").exists() {
+        return "dnf".to_string();
+    }
+
+    // Gentoo - emerge/portage
+    if Path::new("/var/db/pkg").exists() || Path::new("/etc/portage").exists() {
+        return "emerge".to_string();
+    }
+
+    // NixOS - nix
+    if Path::new("/nix/store").exists() || Path::new("/nix/var/nix").exists() {
+        return "nix".to_string();
+    }
+
+    // Debian/Ubuntu - apt (not supported yet, but detect for future)
+    if Path::new("/var/lib/dpkg").exists() {
+        // For now, default to pacman since apt isn't implemented
+        return "pacman".to_string();
+    }
+
+    // Default fallback
     "pacman".to_string()
 }
 fn default_cyan() -> String {
@@ -186,14 +222,17 @@ impl Default for Config {
 impl Config {
     pub fn load() -> Result<Self> {
         let config_path = Self::config_path()?;
-        
+
         if config_path.exists() {
             let content = fs::read_to_string(&config_path)?;
             match toml::from_str::<Config>(&content) {
                 Ok(config) => Ok(config),
                 Err(e) => {
                     eprintln!("Warning: Failed to parse config file: {}", e);
-                    eprintln!("Using default configuration. Please check {}", config_path.display());
+                    eprintln!(
+                        "Using default configuration. Please check {}",
+                        config_path.display()
+                    );
                     Ok(Config::default())
                 }
             }
@@ -206,29 +245,29 @@ impl Config {
             Ok(config)
         }
     }
-    
+
     pub fn save(&self) -> Result<()> {
         let config_path = Self::config_path()?;
-        
+
         if let Some(parent) = config_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        
+
         let content = toml::to_string_pretty(self)?;
         fs::write(&config_path, content)?;
-        
+
         Ok(())
     }
-    
+
     fn config_path() -> Result<PathBuf> {
-        let config_dir = dirs::config_dir()
-            .ok_or_else(|| eyre::eyre!("Could not find config directory"))?;
+        let config_dir =
+            dirs::config_dir().ok_or_else(|| eyre::eyre!("Could not find config directory"))?;
         Ok(config_dir.join("pmux").join("config.toml"))
     }
-    
+
     pub fn parse_color(&self, color_str: &str) -> Color {
         let color_lower = color_str.trim().to_lowercase();
-        
+
         // Named colors (case-insensitive)
         match color_lower.as_str() {
             "black" => Color::Black,

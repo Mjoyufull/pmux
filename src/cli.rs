@@ -29,7 +29,7 @@ pub struct QueryOpts {
 
 pub fn parse_args() -> eyre::Result<Command> {
     let mut parser = lexopt::Parser::from_env();
-    
+
     // Check for pacman-style flags
     let mut sync_mode = false;
     let mut query_mode = false;
@@ -40,7 +40,7 @@ pub fn parse_args() -> eyre::Result<Command> {
     let mut search_string = None;
     let mut filter_managers = Vec::new();
     let mut packages = Vec::new();
-    
+
     while let Some(arg) = parser.next()? {
         match arg {
             Short('S') => sync_mode = true,
@@ -78,7 +78,7 @@ pub fn parse_args() -> eyre::Result<Command> {
             _ => return Err(arg.unexpected().into()),
         }
     }
-    
+
     // Determine command
     if sync_mode {
         // -Ss means search in TUI, not install
@@ -96,10 +96,7 @@ pub fn parse_args() -> eyre::Result<Command> {
             }))
         }
     } else if query_mode {
-        Ok(Command::Query(QueryOpts {
-            info,
-            packages,
-        }))
+        Ok(Command::Query(QueryOpts { info, packages }))
     } else {
         // Default to TUI mode
         // If packages are provided without -S, treat as search string
@@ -110,7 +107,7 @@ pub fn parse_args() -> eyre::Result<Command> {
         } else {
             None
         };
-        
+
         Ok(Command::Tui(TuiOpts {
             search_string: final_search,
             filter_managers,
@@ -119,7 +116,8 @@ pub fn parse_args() -> eyre::Result<Command> {
 }
 
 fn print_help() {
-    println!("pmux - Universal package manager TUI
+    println!(
+        "pmux - Universal package manager TUI
 
 USAGE:
     pmux [OPTIONS] [SEARCH...]
@@ -147,7 +145,7 @@ PM FILTERS (use @ to avoid shell globbing):
     @dnf                    DNF packages
     @nix                    Nix packages
     @emerge, @gentoo        Portage packages
-    
+
     Note: * also works but shells may expand it (use quotes: '*aur')
 
 KEYBINDS:
@@ -155,7 +153,7 @@ KEYBINDS:
     Enter                   Install selected packages
     Tab                     Switch focus (results ↔ installed)
     Esc/q                   Exit
-    j/k, Up/Down            Navigate
+    Alt+j/Alt+k, Up/Down    Navigate
     Ctrl+U/Ctrl+D           Half page scroll
     Home/End                Jump to start/end
     Ctrl+L                  Clear search
@@ -176,5 +174,6 @@ EXAMPLES:
 CONFIG:
     ~/.config/pmux/config.toml
     See config.example.toml for all options
-");
+"
+    );
 }

@@ -1,5 +1,5 @@
 # ============================================================================
-# pmux Configuration File
+# pmux Configuration File - Version 1.0.0-ktk
 # ============================================================================
 # This file will be automatically created at: ~/.config/pmux/config.toml
 # Copy this example and customize it to your liking!
@@ -162,6 +162,9 @@ hostpm = "pacman"
 #   pmux @aur               - Show only AUR packages
 #   pmux @aur firefox       - Filter to AUR + search firefox
 #   pmux -S firefox         - Install firefox directly (no TUI)
+#   pmux -Syu               - Full system upgrade
+#   pmux -Q                 - List installed packages
+#   pmux -Qi firefox        - Show detailed package info
 #
 # In TUI:
 #   Type to search          - Fuzzy search packages
@@ -176,10 +179,21 @@ hostpm = "pacman"
 #
 # Keybinds:
 #   j/k or Up/Down          - Navigate
+#   Alt+j/Alt+k             - Alternative navigation
 #   Ctrl+U/Ctrl+D           - Half page scroll
 #   Home/End                - Jump to start/end
 #   Ctrl+L                  - Clear search
 #   Backspace               - Delete character
+#
+# Package Information Display:
+#   Package descriptions now appear FIRST in the info panel for better UX:
+#   *  package-name
+#         Description:   What the package does (shown first!)
+#         Latest version available: 1.0.0
+#         Latest version installed: [ Not Installed ]
+#         Size of files: 1,234 KiB
+#         Homepage:      https://example.com
+#         License:       MIT
 #
 # ============================================================================
 # Third-Party Repositories

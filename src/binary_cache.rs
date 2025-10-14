@@ -11,7 +11,7 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
 const MAGIC: &[u8; 4] = b"PMUX";
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;  // Bumped to invalidate old caches without new fields
 
 #[repr(C)]
 struct Header {
@@ -123,6 +123,9 @@ impl BinaryCache {
                 repo: repo.to_string(),
                 manager: manager.to_string(),
                 installed: false,
+                homepage: String::new(),
+                license: String::new(),
+                size: None,
             });
         }
         

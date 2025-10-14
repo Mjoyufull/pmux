@@ -15,6 +15,12 @@ pub struct Package {
     pub repo: String,
     pub manager: String,
     pub installed: bool,
+    #[serde(default)]
+    pub homepage: String,
+    #[serde(default)]
+    pub license: String,
+    #[serde(default)]
+    pub size: Option<u64>,
 }
 
 pub trait PackageManager: Send + Sync {
@@ -25,6 +31,7 @@ pub trait PackageManager: Send + Sync {
     #[allow(dead_code)]
     fn search(&self, query: &str) -> Result<Vec<Package>>;
     fn install_command(&self, packages: &[&Package]) -> String;
+    fn remove_command(&self, packages: &[&Package]) -> String;
     #[allow(dead_code)]
     fn needs_sudo(&self) -> bool;
 }
