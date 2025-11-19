@@ -36,7 +36,7 @@ impl Pacman {
         Self { dbpath }
     }
 
-    fn parse_sync_db(&self, db_file: &Path) -> Result<Vec<Package>> {
+    pub fn parse_sync_db(&self, db_file: &Path) -> Result<Vec<Package>> {
         let mut packages = Vec::with_capacity(10000);
         let file = fs::File::open(db_file)?;
         let decoder = GzDecoder::new(file);
@@ -130,14 +130,40 @@ impl Pacman {
     fn parse_local_db(&self) -> Result<Vec<Package>> {
         use rayon::prelude::*;
 
-        let local_path = self.dbpath.join("local");
+        // CRITICAL: Check ALL Bedrock strata for installed packages
+        let mut all_local_paths = Vec::new();
+        
+        // Add primary path
+        let primary_path = self.dbpath.join("local");
+        if primary_path.exists() {
+            all_local_paths.push(primary_path);
+        }
+        
+        // Check ALL Bedrock strata
+        if PathBuf::from("/bedrock/strata").exists() {
+            if let Ok(entries) = fs::read_dir("/bedrock/strata") {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let stratum_pacman_path = PathBuf::from("/bedrock/strata")
+                        .join(entry.file_name())
+                        .join("var/lib/pacman/local");
+                    if stratum_pacman_path.exists() {
+                        all_local_paths.push(stratum_pacman_path);
+                    }
+                }
+            }
+        }
 
-        if !local_path.exists() {
+        if all_local_paths.is_empty() {
             return Ok(Vec::new());
         }
 
-        // Collect paths first - optimized
-        let desc_files: Vec<PathBuf> = fs::read_dir(&local_path)?
+        // Collect desc files from ALL paths
+        let desc_files: Vec<PathBuf> = all_local_paths
+            .iter()
+            .filter_map(|local_path| {
+                fs::read_dir(local_path).ok()
+            })
+            .flatten()
             .filter_map(|e| e.ok())
             .filter_map(|e| {
                 let path = e.path();

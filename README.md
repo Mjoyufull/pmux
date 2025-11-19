@@ -1,6 +1,6 @@
 # pmux
 
-A fast package manager multiplexer with a TUI. Works across pacman, dnf, nix, emerge, and AUR.
+A fast package manager multiplexer with a TUI. Works across pacman, dnf, nix, emerge, pkgit, and AUR.
 
 ## What it does
 
@@ -8,7 +8,7 @@ pmux lets you browse and install packages from multiple package managers in one 
 
 **Key Features:**
 - **Fast TUI interface** with package descriptions displayed prominently
-- **Multi-PM support** - pacman, AUR, dnf, nix, emerge in one tool
+- **Multi-PM support** - pacman, AUR, dnf, nix, emerge, pkgit in one tool
 - **Instant search** across 80k+ packages with fuzzy matching
 - **Smart caching** with binary format and memory mapping
 - **Mouse support** - click, scroll, hover interactions
@@ -33,6 +33,15 @@ nix run github:Mjoyufull/pmux
 
 # Or install
 nix profile install github:Mjoyufull/pmux
+```
+
+### With pkgit
+```bash
+# Add pmux repo
+pkgit add https://github.com/Mjoyufull/pmux
+
+# Install
+pkgit install pmux
 ```
 
 ### First time setup
@@ -80,14 +89,15 @@ Type `@` followed by the package manager name:
 - `@dnf` - Fedora/RHEL
 - `@nix` - Nix packages
 - `@emerge` - Gentoo
+- `@pkgit` - Git-based packages
 
 ## Configuration
 
 Config lives at `~/.config/pmux/config.toml`. Check `config.example.toml` for all the options.
 
-By default, pmux only loads your host package manager. To enable others:
-- `enabled_pm = []` - load all available package managers
-- `enabled_pm = ["pacman", "nix"]` - load specific ones
+By default, pmux loads all available package managers. To customize:
+- `enabled_pm = []` - load all available package managers (default)
+- `enabled_pm = ["pacman", "nix"]` - load specific ones only
 
 You can also customize colors, borders, layout, and more. See the example config for details.
 
@@ -98,6 +108,7 @@ You can also customize colors, borders, layout, and more. See the example config
 - dnf (Fedora/RHEL/CentOS)
 - nix (NixOS/Nix)
 - emerge (Gentoo)
+- pkgit (git-based packages)
 
 Automatically detects Bedrock Linux strata and finds package managers in them.
 
@@ -154,7 +165,7 @@ The description appears first to help you quickly understand what each package d
 
 ## Version
 
-Current version: **1.0.0-ktk** - First stable release ready for production use.
+Current version: **2.0.0-hugshine** - Major release with pkgit support, improved filtering, and UX enhancements.
 
 ## License
 

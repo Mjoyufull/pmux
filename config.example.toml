@@ -1,5 +1,5 @@
 # ============================================================================
-# pmux Configuration File - Version 1.0.0-ktk
+# pmux Configuration File - Version 2.0.0-hugshine
 # ============================================================================
 # This file will be automatically created at: ~/.config/pmux/config.toml
 # Copy this example and customize it to your liking!
@@ -27,7 +27,7 @@
 sudoers = "sudo"
 
 # Border style
-# true  = Rounded corners (╭─╮│╰─╯)
+# true  = Rounded corners (╭─╮│╰─╯)./
 # false = Plain corners (┌─┐│└─┘)
 rounded_borders = false
 
@@ -44,6 +44,11 @@ right_column_width_percent = 30
 # Height of the input field in lines
 # Range: 1-5 (recommended: 3)
 input_field_height = 3
+
+# Height of the description panel in lines
+# Range: 3-20 (recommended: 5-10)
+# This controls how much package information is visible
+description_unit_height = 5
 
 # The following are reserved for future features:
 installed_list_percent = 50
@@ -75,6 +80,10 @@ terminal_unit = "#ffffff"
 # (switches between results and installed with Tab or mouse)
 # You can use color names like "LightBlue" or hex like "#00ffff"
 focused_border = "LightCyan"
+
+# Software Discovery mode border color
+# Default border color for SD mode panels (can be overridden in [SD] section)
+software_discovery = "#ffffff"
 
 
 [text_colours]
@@ -109,6 +118,22 @@ terminal_unit_highlight_text = "#00ff00"
 # Panel titles color (Results, Input, Description, Installed)
 unit_title_text = "#ffffff"
 
+# Software Discovery mode text colors
+# Results panel text
+sd_results_text = "#ffffff"
+sd_results_highlight_text = "LightGreen"
+
+# Details panel text
+sd_details_text = "#ffffff"
+sd_details_highlight_text = "LightGreen"
+
+# Package Manager selector text
+sd_pm_text = "#ffffff"
+sd_pm_highlight_text = "LightGreen"
+
+# SD mode titles
+sd_title_text = "#ffffff"
+
 
 [pm]
 # ============================================================================
@@ -117,19 +142,14 @@ unit_title_text = "#ffffff"
 
 # Host/primary package manager
 # This PM will be prioritized in search results and shown first
-# Options: "pacman", "dnf", "nix", "emerge"
+# Options: "pacman", "dnf", "nix", "emerge", "pkgit"
 hostpm = "pacman"
 
 # Enabled package managers (in order of priority)
 # 
-# DEFAULT BEHAVIOR (field not present):
-#   Only the host PM is enabled. This is the recommended setting for most users
-#   who only have one package manager installed. Fast startup, minimal overhead.
-#   Just comment out or remove the enabled_pm line below.
-#
-# ENABLE ALL PMs (enabled_pm = []):
-#   Empty list enables ALL available package managers. For power users on
-#   Bedrock Linux or multi-PM setups. Host PM loads first, others in background.
+# DEFAULT BEHAVIOR (enabled_pm = []):
+#   All available package managers are loaded. This is the recommended setting
+#   for most users. Host PM is prioritized in search results.
 #
 # SPECIFIC PMs (enabled_pm = ["list"]):
 #   Explicitly list package managers you want. Host PM is always included.
@@ -140,15 +160,42 @@ hostpm = "pacman"
 #   "dnf"    - Fedora/RHEL/CentOS
 #   "nix"    - Nix package manager
 #   "emerge" - Gentoo Portage
+#   "pkgit"  - Git-based package manager
 #
-# Example: Default (only host PM) - comment out or remove this line:
-# enabled_pm = []
+# Example: Enable ALL available PMs (default):
+enabled_pm = []
 #
-# Example: Enable ALL available PMs (Bedrock Linux users):
-# enabled_pm = []
-#
-# Example: Enable specific PMs:
-# enabled_pm = ["pacman", "paru", "nix"]
+# Example: Enable specific PMs only:
+# enabled_pm = ["pacman", "paru", "nix", "pkgit"]
+
+
+[SD]
+# ============================================================================
+# Software Discovery Mode Configuration
+# ============================================================================
+
+# Border colors (inherit from [border_colours] if not set)
+# results_border = "#ffffff"        # Results list border
+# details_border = "#ffffff"        # Details panel border (not used, no borders)
+# pm_selector_border = "#ffffff"    # Package manager selector border
+# focused_border = "LightCyan"       # Inherits from [border_colours].focused_border
+
+# Text colors (inherit from [text_colours] if not set)
+# text_color = "#ffffff"            # Inherits from [text_colours].sd_details_text
+# highlight_color = "LightGreen"    # Inherits from [text_colours].sd_details_highlight_text
+# title_color = "#ffffff"           # Inherits from [text_colours].sd_title_text
+# pm_highlight_text = "LightGreen"  # Inherits from [text_colours].sd_pm_highlight_text
+
+# Background
+# transparent_background = false    # true = transparent, false = use background_color
+# background_color = "#282c34"      # OneDark background color
+
+# Installed status colors
+# installed_color = "#00ff00"       # Green for installed packages
+# not_installed_color = "#ff5555"   # Red for not installed packages
+
+# Layout
+# results_height = 5                # Height of results list in lines
 
 
 # ============================================================================

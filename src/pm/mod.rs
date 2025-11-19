@@ -1,8 +1,9 @@
-mod pacman;
-mod paru;
-mod dnf;
-mod nix;
-mod emerge;
+pub mod pacman;
+pub mod paru;
+pub mod dnf;
+pub mod nix;
+pub mod emerge;
+pub mod pkgit;
 
 use eyre::Result;
 use serde::{Deserialize, Serialize};
@@ -40,14 +41,14 @@ pub fn detect_available_managers(hostpm: &str, enabled_pm: &Option<Vec<String>>)
     let mut managers: Vec<Box<dyn PackageManager>> = vec![];
     
     // Logic:
-    // - None = only host PM (default, most users)
-    // - Some([]) = all available PMs (power users)
+    // - None = all available PMs (default, shows everything with host PM prioritized)
+    // - Some([]) = all available PMs (explicit, power users)
     // - Some([list]) = only those PMs + host PM
     let should_enable = |pm_name: &str| -> bool {
         match enabled_pm {
             None => {
-                // Default: only host PM
-                pm_name == hostpm
+                // Default: show all available PMs (host PM will be prioritized in search)
+                true
             }
             Some(list) if list.is_empty() => {
                 // Empty list = enable all
@@ -93,6 +94,12 @@ pub fn detect_available_managers(hostpm: &str, enabled_pm: &Option<Vec<String>>)
                     managers.push(Box::new(pm));
                 }
             }
+            "pkgit" => {
+                let pm = pkgit::Pkgit::new();
+                if pm.is_available() {
+                    managers.push(Box::new(pm));
+                }
+            }
             _ => {}
         }
     }
@@ -124,6 +131,12 @@ pub fn detect_available_managers(hostpm: &str, enabled_pm: &Option<Vec<String>>)
     }
     if should_enable("emerge") && hostpm != "emerge" {
         let pm = emerge::Emerge::new();
+        if pm.is_available() {
+            managers.push(Box::new(pm));
+        }
+    }
+    if should_enable("pkgit") && hostpm != "pkgit" {
+        let pm = pkgit::Pkgit::new();
         if pm.is_available() {
             managers.push(Box::new(pm));
         }

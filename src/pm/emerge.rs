@@ -246,6 +246,16 @@ impl Emerge {
                             }
                         }
 
+                        // Try to get size from installed package if available
+                        let size = if let Ok(installed) = self.parse_vdb() {
+                            installed
+                                .iter()
+                                .find(|p| p.name == format!("{}/{}", category_name, pkg_name))
+                                .and_then(|p| p.size)
+                        } else {
+                            None
+                        };
+
                         packages.push(Package {
                             name: format!("{}/{}", category_name, pkg_name),
                             version: None,
@@ -255,7 +265,7 @@ impl Emerge {
                             installed: false,
                             homepage,
                             license,
-                            size: None,
+                            size,
                         });
                     }
                 }

@@ -1,6 +1,5 @@
 use super::{Package, PackageManager};
 use eyre::Result;
-use rusqlite::{Connection, OpenFlags};
 use std::fs;
 use std::path::PathBuf;
 
@@ -61,49 +60,57 @@ impl Dnf {
         }
     }
 
-    // Parse RPM database - DIRECT SQLite READ, ZERO COMMAND SPAWNING!
-    fn parse_rpmdb(&self) -> Result<Vec<Package>> {
+    // Parse installed packages using dnf list --installed
+    // Platform-agnostic and works across all Bedrock strata
+    fn parse_installed(&self) -> Result<Vec<Package>> {
         let mut all_packages = Vec::new();
 
-        // Read from all found RPM databases (for bedrock linux multi-stratum support)
-        for rpmdb_path in &self.rpmdb_paths {
-            let sqlite_path = rpmdb_path.join("rpmdb.sqlite");
+        // Use dnf list --installed - works across all Bedrock strata
+        // Output format: "package.arch version repo"
+        // Example: "nano.x86_64 2.9.8-1.fc42 @System"
+        let output = std::process::Command::new("dnf")
+            .args(&["list", "--installed", "--quiet"])
+            .output()?;
 
-            if !sqlite_path.exists() {
+        if !output.status.success() {
+            return Ok(Vec::new());
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for line in stdout.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with("Installed") || line.starts_with("Loaded") {
                 continue;
             }
 
-            // Direct SQLite read - INSTANT!
-            match Connection::open_with_flags(&sqlite_path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
-                Ok(conn) => {
-                    // Query the Name table - simple and fast
-                    let mut stmt = conn.prepare("SELECT DISTINCT key FROM Name")?;
-                    let packages_iter = stmt.query_map([], |row| {
-                        let name: String = row.get(0)?;
-                        Ok(Package {
-                            name,
-                            version: None,
-                            description: String::new(),
-                            repo: "installed".to_string(),
-                            manager: "dnf".to_string(),
-                            installed: true,
-                            homepage: String::new(),
-                            license: String::new(),
-                            size: None,
-                        })
-                    })?;
-
-                    for pkg_result in packages_iter {
-                        if let Ok(pkg) = pkg_result {
-                            all_packages.push(pkg);
-                        }
-                    }
-                }
-                Err(_) => {
-                    // Silently skip databases we can't read
-                    continue;
-                }
+            // Parse: "package.arch version repo"
+            // Split by whitespace - first part is package name (may have .arch suffix)
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.is_empty() {
+                continue;
             }
+
+            // Extract package name (remove .arch suffix if present)
+            let pkg_name_full = parts[0];
+            let pkg_name = pkg_name_full.split('.').next().unwrap_or(pkg_name_full).to_string();
+
+            // Extract version (second part)
+            let version = parts.get(1).map(|s| s.to_string());
+
+            // Extract repo (third part, optional)
+            let repo = parts.get(2).map(|s| s.to_string()).unwrap_or_else(|| "installed".to_string());
+
+            all_packages.push(Package {
+                name: pkg_name,
+                version,
+                description: String::new(),
+                repo,
+                manager: "dnf".to_string(),
+                installed: true,
+                homepage: String::new(),
+                license: String::new(),
+                size: None,
+            });
         }
 
         Ok(all_packages)
@@ -120,108 +127,20 @@ impl PackageManager for Dnf {
     }
 
     fn list_all(&self) -> Result<Vec<Package>> {
-        // Try pmux cache first
-        if let Some(cache_dir) = dirs::cache_dir() {
-            let dnf_list = cache_dir
-                .join("pmux")
-                .join("repos")
-                .join("dnf-packages.txt");
-            if dnf_list.exists() {
-                // Use mmap for zero-copy reading
-                let file = fs::File::open(dnf_list)?;
-                let mmap = unsafe { memmap2::Mmap::map(&file)? };
-
-                // Pre-allocate with estimated capacity
-                let mut packages = Vec::with_capacity(50_000);
-
-                // Parse directly from mmap bytes - ultra fast
-                let content = std::str::from_utf8(&mmap)?;
-
-                for line in content.lines() {
-                    let bytes = line.as_bytes();
-
-                    // Fast header skip - check first byte
-                    if bytes.is_empty() {
-                        continue;
-                    }
-
-                    let first = bytes[0];
-                    if first == b'A' || first == b'U' || first == b'R' || first == b'L' {
-                        continue;
-                    }
-
-                    // Manual split for speed - avoid iterator overhead
-                    let mut start = 0;
-                    let mut parts = [0usize; 6]; // name_end, version_start, version_end, repo_start
-                    let mut part_idx = 0;
-
-                    for (i, &byte) in bytes.iter().enumerate() {
-                        if byte == b' ' || byte == b'\t' {
-                            if i > start {
-                                parts[part_idx] = start;
-                                parts[part_idx + 1] = i;
-                                part_idx += 2;
-                                if part_idx >= 6 {
-                                    break;
-                                }
-                            }
-                            start = i + 1;
-                        }
-                    }
-
-                    // Handle last part
-                    if part_idx < 6 && start < bytes.len() {
-                        parts[part_idx] = start;
-                        parts[part_idx + 1] = bytes.len();
-                    }
-
-                    if part_idx < 2 {
-                        continue;
-                    }
-
-                    // Extract name (strip .arch suffix)
-                    let name_arch = &line[parts[0]..parts[1]];
-                    let name = if let Some(dot_pos) = name_arch.rfind('.') {
-                        &name_arch[..dot_pos]
-                    } else {
-                        name_arch
-                    };
-
-                    // Extract version
-                    let version = &line[parts[2]..parts[3]];
-
-                    // Extract repo if present
-                    let repo = if part_idx >= 4 {
-                        &line[parts[4]..parts[5]]
-                    } else {
-                        "dnf"
-                    };
-
-                    packages.push(Package {
-                        name: name.to_string(),
-                        version: Some(version.to_string()),
-                        description: String::new(),
-                        repo: repo.to_string(),
-                        manager: "dnf".to_string(),
-                        installed: false,
-                        homepage: String::new(),
-                        license: String::new(),
-                        size: None,
-                    });
-                }
-
-                packages.shrink_to_fit();
-                return Ok(packages);
-            }
+        // Load from redb cache
+        use crate::cache::CacheManager;
+        let cache = CacheManager::new()?;
+        if let Some(packages) = cache.get("dnf_all")? {
+            return Ok(packages);
         }
-
+        
         // No cache available - return empty list
         // Available packages should be synced with `pmux -Sy`
         Ok(vec![])
     }
 
     fn list_installed(&self) -> Result<Vec<Package>> {
-        self.parse_rpmdb()
+        self.parse_installed()
     }
 
     fn search(&self, _query: &str) -> Result<Vec<Package>> {

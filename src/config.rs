@@ -16,6 +16,8 @@ pub struct Config {
     pub text_colours: TextColorConfig,
     #[serde(default)]
     pub pm: PmConfig,
+    #[serde(default)]
+    pub sd: SdConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,6 +34,8 @@ pub struct LayoutConfig {
     pub right_column_width_percent: u16,
     #[serde(default = "default_input_field_height")]
     pub input_field_height: u16,
+    #[serde(default = "default_description_unit_height")]
+    pub description_unit_height: u16,
     #[serde(default = "default_installed_list_percent")]
     pub installed_list_percent: u16,
     #[serde(default = "default_terminal_percent")]
@@ -50,6 +54,8 @@ pub struct BorderColorConfig {
     pub results_unit: String,
     #[serde(default = "default_cyan")]
     pub focused_border: String,
+    #[serde(default = "default_white")]
+    pub software_discovery: String, // Border color for SD mode (can override per-section)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,6 +78,21 @@ pub struct TextColorConfig {
     pub description_unit_text: String,
     #[serde(default = "default_white")]
     pub unit_title_text: String,
+    // SD mode specific text colors
+    #[serde(default = "default_white")]
+    pub sd_results_text: String,
+    #[serde(default = "default_green")]
+    pub sd_results_highlight_text: String,
+    #[serde(default = "default_white")]
+    pub sd_details_text: String,
+    #[serde(default = "default_green")]
+    pub sd_details_highlight_text: String,
+    #[serde(default = "default_white")]
+    pub sd_pm_text: String,
+    #[serde(default = "default_green")]
+    pub sd_pm_highlight_text: String,
+    #[serde(default = "default_white")]
+    pub sd_title_text: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +101,36 @@ pub struct PmConfig {
     pub hostpm: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enabled_pm: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SdConfig {
+    #[serde(default = "default_white")]
+    pub results_border: String,
+    #[serde(default = "default_white")]
+    pub details_border: String,
+    #[serde(default = "default_white")]
+    pub pm_selector_border: String,
+    #[serde(default = "default_cyan")]
+    pub focused_border: String,
+    #[serde(default = "default_white")]
+    pub text_color: String,
+    #[serde(default = "default_green")]
+    pub highlight_color: String,
+    #[serde(default = "default_white")]
+    pub title_color: String,
+    #[serde(default = "default_false")]
+    pub transparent_background: bool,
+    #[serde(default = "default_5")]
+    pub results_height: u16,
+    #[serde(default = "default_green")]
+    pub installed_color: String,
+    #[serde(default = "default_red")]
+    pub not_installed_color: String,
+    #[serde(default = "default_onedark")]
+    pub background_color: String,
+    #[serde(default = "default_white")]
+    pub pm_highlight_text: String, // For highlighting typed word in PM section
 }
 
 // Defaults
@@ -94,6 +145,9 @@ fn default_right_column_width_percent() -> u16 {
 }
 fn default_input_field_height() -> u16 {
     3
+}
+fn default_description_unit_height() -> u16 {
+    5
 }
 fn default_installed_list_percent() -> u16 {
     50
@@ -146,8 +200,33 @@ fn detect_host_pm() -> String {
     // Default fallback
     "pacman".to_string()
 }
+
+// Check if a package manager is actually available on the system
+fn is_hostpm_available(pm: &str) -> bool {
+    use std::path::Path;
+    
+    match pm {
+        "pacman" => Path::new("/var/lib/pacman").exists(),
+        "dnf" => Path::new("/var/lib/rpm").exists() || Path::new("/var/lib/dnf").exists() || Path::new("/usr/lib/sysimage/rpm").exists(),
+        "emerge" => Path::new("/var/db/pkg").exists() || Path::new("/etc/portage").exists(),
+        "nix" => Path::new("/nix/store").exists() || Path::new("/nix/var/nix").exists(),
+        _ => false,
+    }
+}
 fn default_cyan() -> String {
     "#00ffff".to_string()
+}
+fn default_false() -> bool {
+    false
+}
+fn default_5() -> u16 {
+    5
+}
+fn default_red() -> String {
+    "#ff5555".to_string()
+}
+fn default_onedark() -> String {
+    "#282c34".to_string()
 }
 
 impl Default for MainConfig {
@@ -164,6 +243,7 @@ impl Default for LayoutConfig {
         Self {
             right_column_width_percent: default_right_column_width_percent(),
             input_field_height: default_input_field_height(),
+            description_unit_height: default_description_unit_height(),
             installed_list_percent: default_installed_list_percent(),
             terminal_percent: default_terminal_percent(),
         }
@@ -178,6 +258,7 @@ impl Default for BorderColorConfig {
             description_unit: default_white(),
             results_unit: default_white(),
             focused_border: default_cyan(),
+            software_discovery: default_white(),
         }
     }
 }
@@ -194,6 +275,13 @@ impl Default for TextColorConfig {
             installed_list_unit_text: default_white(),
             description_unit_text: default_white(),
             unit_title_text: default_white(),
+            sd_results_text: default_white(),
+            sd_results_highlight_text: default_green(),
+            sd_details_text: default_white(),
+            sd_details_highlight_text: default_green(),
+            sd_pm_text: default_white(),
+            sd_pm_highlight_text: default_green(),
+            sd_title_text: default_white(),
         }
     }
 }
@@ -207,6 +295,81 @@ impl Default for PmConfig {
     }
 }
 
+impl Default for SdConfig {
+    fn default() -> Self {
+        Self {
+            results_border: default_white(),
+            details_border: default_white(),
+            pm_selector_border: default_white(),
+            focused_border: default_cyan(),
+            text_color: default_white(),
+            highlight_color: default_green(),
+            title_color: default_white(),
+            transparent_background: default_false(),
+            results_height: default_5(),
+            installed_color: default_green(),
+            not_installed_color: default_red(),
+            background_color: default_onedark(),
+            pm_highlight_text: default_white(),
+        }
+    }
+}
+
+impl SdConfig {
+    // Inherit from main config if not set
+    pub fn with_main_config(&self, _main: &MainConfig, text: &TextColorConfig, border: &BorderColorConfig) -> Self {
+        Self {
+            // Border colors: inherit from border_colours if not set
+            results_border: if self.results_border == default_white() { 
+                border.software_discovery.clone()
+            } else { 
+                self.results_border.clone() 
+            },
+            details_border: if self.details_border == default_white() { 
+                border.software_discovery.clone() 
+            } else { 
+                self.details_border.clone() 
+            },
+            pm_selector_border: if self.pm_selector_border == default_white() { 
+                border.software_discovery.clone() 
+            } else { 
+                self.pm_selector_border.clone() 
+            },
+            focused_border: if self.focused_border == default_cyan() { 
+                border.focused_border.clone() 
+            } else { 
+                self.focused_border.clone() 
+            },
+            // Text colors: inherit from text_colours if not set
+            text_color: if self.text_color == default_white() { 
+                text.sd_details_text.clone()
+            } else { 
+                self.text_color.clone() 
+            },
+            highlight_color: if self.highlight_color == default_green() { 
+                text.sd_details_highlight_text.clone() 
+            } else { 
+                self.highlight_color.clone() 
+            },
+            title_color: if self.title_color == default_white() { 
+                text.sd_title_text.clone() 
+            } else { 
+                self.title_color.clone() 
+            },
+            transparent_background: self.transparent_background,
+            results_height: self.results_height,
+            installed_color: self.installed_color.clone(),
+            not_installed_color: self.not_installed_color.clone(),
+            background_color: self.background_color.clone(),
+            pm_highlight_text: if self.pm_highlight_text == default_white() {
+                text.sd_pm_highlight_text.clone()
+            } else {
+                self.pm_highlight_text.clone()
+            },
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -215,6 +378,7 @@ impl Default for Config {
             border_colours: BorderColorConfig::default(),
             text_colours: TextColorConfig::default(),
             pm: PmConfig::default(),
+            sd: SdConfig::default(),
         }
     }
 }
@@ -226,7 +390,16 @@ impl Config {
         if config_path.exists() {
             let content = fs::read_to_string(&config_path)?;
             match toml::from_str::<Config>(&content) {
-                Ok(config) => Ok(config),
+                Ok(config) => {
+                    // Check if hostpm is valid
+                    if !is_hostpm_available(&config.pm.hostpm) {
+                        eprintln!("\nWarning: Configured host package manager '{}' is not available on this system.", config.pm.hostpm);
+                        let detected = detect_host_pm();
+                        eprintln!("Auto-detected package manager: {}", detected);
+                        eprintln!("Please update your config at: {}\n", config_path.display());
+                    }
+                    Ok(config)
+                },
                 Err(e) => {
                     eprintln!("Warning: Failed to parse config file: {}", e);
                     eprintln!(
@@ -237,8 +410,19 @@ impl Config {
                 }
             }
         } else {
-            // Create default config
+            // Create default config - first time run
             let config = Config::default();
+            let detected_pm = &config.pm.hostpm;
+            
+            eprintln!("\nFirst run detected!");
+            eprintln!("Auto-detected host package manager: {}", detected_pm);
+            eprintln!("Config will be saved to: {}", config_path.display());
+            
+            if !is_hostpm_available(detected_pm) {
+                eprintln!("\nWarning: Could not detect a supported package manager.");
+                eprintln!("Please configure your host PM in the config file.");
+            }
+            
             if let Err(e) = config.save() {
                 eprintln!("Warning: Failed to save default config: {}", e);
             }

@@ -3,8 +3,10 @@ use lexopt::prelude::*;
 #[derive(Debug)]
 pub enum Command {
     Tui(TuiOpts),
+    SoftwareDiscovery(SdOpts),
     Sync(SyncOpts),
     Query(QueryOpts),
+    Remove(RemoveOpts),
 }
 
 #[derive(Debug)]
@@ -27,16 +29,30 @@ pub struct QueryOpts {
     pub packages: Vec<String>,
 }
 
+#[derive(Debug)]
+pub struct SdOpts {
+    pub search_string: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct RemoveOpts {
+    pub force: bool,
+    pub packages: Vec<String>,
+}
+
 pub fn parse_args() -> eyre::Result<Command> {
     let mut parser = lexopt::Parser::from_env();
 
     // Check for pacman-style flags
     let mut sync_mode = false;
     let mut query_mode = false;
+    let mut discovery_mode = false;
+    let mut remove_mode = false;
     let mut refresh = false;
     let mut force_refresh = false;
     let mut upgrade = false;
     let mut info = false;
+    let mut force_remove = false;
     let mut search_string = None;
     let mut filter_managers = Vec::new();
     let mut packages = Vec::new();
@@ -45,6 +61,8 @@ pub fn parse_args() -> eyre::Result<Command> {
         match arg {
             Short('S') => sync_mode = true,
             Short('Q') => query_mode = true,
+            Short('D') => discovery_mode = true,
+            Short('R') => remove_mode = true,
             Short('y') => {
                 if refresh {
                     force_refresh = true;
@@ -53,6 +71,12 @@ pub fn parse_args() -> eyre::Result<Command> {
             }
             Short('u') => upgrade = true,
             Short('i') => info = true,
+            Short('d') => {
+                // -Rd for force remove
+                if remove_mode {
+                    force_remove = true;
+                }
+            }
             Short('s') => {
                 // -Ss for search
                 if let Ok(val) = parser.value() {
@@ -63,13 +87,22 @@ pub fn parse_args() -> eyre::Result<Command> {
                 print_help();
                 std::process::exit(0);
             }
+            Short('v') | Long("version") => {
+                println!("pmux {}", env!("CARGO_PKG_VERSION"));
+                std::process::exit(0);
+            }
             Value(val) => {
                 let s = val.string()?;
-                // Check for PM filters like @aur, @pacman, etc. (@ instead of * to avoid shell globbing)
+                // Check for PM filters like @aur, @pacman, etc.
                 if s.starts_with('@') {
-                    filter_managers.push(s[1..].to_lowercase());
+                    // CRITICAL: In Remove or Discovery mode, @manager is a modifier for the command,
+                    // not a TUI filter. Treat it as a package arg so it gets passed to the handler.
+                    if remove_mode || discovery_mode {
+                        packages.push(s);
+                    } else {
+                        filter_managers.push(s[1..].to_lowercase());
+                    }
                 } else if s.starts_with('*') {
-                    // Still support * but warn about shell issues
                     filter_managers.push(s[1..].to_lowercase());
                 } else {
                     packages.push(s);
@@ -80,7 +113,23 @@ pub fn parse_args() -> eyre::Result<Command> {
     }
 
     // Determine command
-    if sync_mode {
+    if remove_mode {
+        // -R or -Rd for remove
+        Ok(Command::Remove(RemoveOpts {
+            force: force_remove,
+            packages,
+        }))
+    } else if discovery_mode {
+        // -SD = Software Discovery mode
+        // If packages provided as args, use as search string
+        Ok(Command::SoftwareDiscovery(SdOpts {
+            search_string: if !packages.is_empty() {
+                Some(packages.join(" "))
+            } else {
+                None
+            },
+        }))
+    } else if sync_mode {
         // -Ss means search in TUI, not install
         if search_string.is_some() {
             Ok(Command::Tui(TuiOpts {
@@ -99,7 +148,6 @@ pub fn parse_args() -> eyre::Result<Command> {
         Ok(Command::Query(QueryOpts { info, packages }))
     } else {
         // Default to TUI mode
-        // If packages are provided without -S, treat as search string
         let final_search = if search_string.is_some() {
             search_string
         } else if !packages.is_empty() {
@@ -125,19 +173,25 @@ USAGE:
 
 PACMAN-STYLE OPERATIONS:
     -S <packages>           Install packages
-    -Sy                     Sync package databases
+    -Sy                     Sync package databases (enabled PMs only)
     -Syu                    Sync databases and upgrade system
-    -Syy                    Force refresh databases
+    -Syy                    Force refresh databases (enabled PMs only)
     -Ss <search>            Search for packages (opens TUI)
+    -SD [package]           Software Discovery mode
     -Q                      Query installed packages
     -Qi <package>           Query package info
+    -R <packages>           Remove packages (uses host PM)
+    -Rd <packages>          Force remove packages (uses host PM)
 
-TUI MODE (default):
-    pmux                    Open TUI browser
+TUI MODES:
+    pmux                    Open TUI browser (default)
     pmux firefox            Open TUI with 'firefox' search
     pmux -Ss firefox        Same as above (pacman-style)
     pmux @aur               Filter to AUR only
     pmux @aur firefox       Filter to AUR + search 'firefox'
+    pmux -SD                Software Discovery (prompts for package)
+    pmux -SD foot           Software Discovery for 'foot'
+    pmux -SD firefox        Software Discovery for 'firefox'
 
 PM FILTERS (use @ to avoid shell globbing):
     @aur, @paru             AUR packages
@@ -162,13 +216,16 @@ KEYBINDS:
     Mouse scroll            Scroll panels
 
 EXAMPLES:
-    pmux -Sy                Sync package databases
+    pmux -Sy                Sync package databases (enabled PMs only)
     pmux -Syu               Update system
     pmux -Ss firefox        Search for firefox (TUI)
     pmux firefox            Same as above
     pmux @aur vim           Browse AUR packages for vim
     pmux '@aur' vim         Same (quoted to avoid shell issues)
     pmux -S firefox         Install firefox directly
+    pmux -R firefox         Remove firefox (uses host PM)
+    pmux -Rd firefox        Force remove firefox (uses host PM)
+    pmux -SD foot           Software Discovery for 'foot'
     pmux                    Open TUI browser
 
 CONFIG:

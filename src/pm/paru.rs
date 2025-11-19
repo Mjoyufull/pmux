@@ -45,57 +45,93 @@ impl Paru {
 
     // Parse local database to get foreign (AUR) packages
     // A package is foreign if it's installed but NOT in any sync database
+    // CRITICAL: Check ALL Bedrock strata
     fn parse_foreign_packages(&self) -> Result<Vec<Package>> {
-        let local_path = self.dbpath.join("local");
-        let mut packages = Vec::new();
-
-        if !local_path.exists() {
-            return Ok(packages);
+        // CRITICAL: Check ALL Bedrock strata for installed packages
+        let mut all_local_paths = Vec::new();
+        let mut all_sync_paths = Vec::new();
+        
+        // Add primary paths
+        let primary_local = self.dbpath.join("local");
+        let primary_sync = self.dbpath.join("sync");
+        if primary_local.exists() {
+            all_local_paths.push(primary_local);
+        }
+        if primary_sync.exists() {
+            all_sync_paths.push(primary_sync);
+        }
+        
+        // Check ALL Bedrock strata
+        if PathBuf::from("/bedrock/strata").exists() {
+            if let Ok(entries) = fs::read_dir("/bedrock/strata") {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let stratum_pacman_path = PathBuf::from("/bedrock/strata")
+                        .join(entry.file_name())
+                        .join("var/lib/pacman");
+                    let stratum_local = stratum_pacman_path.join("local");
+                    let stratum_sync = stratum_pacman_path.join("sync");
+                    if stratum_local.exists() {
+                        all_local_paths.push(stratum_local);
+                    }
+                    if stratum_sync.exists() {
+                        all_sync_paths.push(stratum_sync);
+                    }
+                }
+            }
+        }
+        
+        if all_local_paths.is_empty() {
+            return Ok(Vec::new());
         }
 
-        // Build set of all packages in sync databases (official repos)
+        let mut packages = Vec::new();
+
+        // Build set of all packages in sync databases (official repos) from ALL strata
         let mut official_pkgs = std::collections::HashSet::new();
-        let sync_path = self.dbpath.join("sync");
 
-        if sync_path.exists() {
-            for entry in fs::read_dir(&sync_path)? {
-                let entry = entry?;
-                let path = entry.path();
+        for sync_path in &all_sync_paths {
+            if let Ok(entries) = fs::read_dir(sync_path) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let path = entry.path();
 
-                // Only process .db files (core.db, extra.db, multilib.db, etc.)
-                if path.extension().and_then(|s| s.to_str()) == Some("db") {
-                    if let Ok(file) = fs::File::open(&path) {
-                        use flate2::read::GzDecoder;
-                        use std::io::Read;
-                        use tar::Archive;
+                    // Only process .db files (core.db, extra.db, multilib.db, etc.)
+                    if path.extension().and_then(|s| s.to_str()) == Some("db") {
+                        if let Ok(file) = fs::File::open(&path) {
+                            use flate2::read::GzDecoder;
+                            use std::io::Read;
+                            use tar::Archive;
 
-                        let decoder = GzDecoder::new(file);
-                        let mut archive = Archive::new(decoder);
+                            let decoder = GzDecoder::new(file);
+                            let mut archive = Archive::new(decoder);
 
-                        // Each package in the archive has a desc file with its NAME
-                        for entry in archive.entries()? {
-                            if let Ok(mut entry) = entry {
-                                let entry_path = entry.path()?;
-                                let path_str = entry_path.to_string_lossy();
+                            // Each package in the archive has a desc file with its NAME
+                            if let Ok(archive_entries) = archive.entries() {
+                                for entry in archive_entries {
+                                    if let Ok(mut entry) = entry {
+                                        if let Ok(entry_path) = entry.path() {
+                                            let path_str = entry_path.to_string_lossy();
 
-                                // Look for desc files: "pkgname-version/desc"
-                                if path_str.ends_with("/desc") {
-                                    let mut content = String::new();
-                                    if entry.read_to_string(&mut content).is_ok() {
-                                        // Parse the desc file to get NAME field
-                                        let mut in_name_section = false;
-                                        for line in content.lines() {
-                                            let line = line.trim();
-                                            if line == "%NAME%" {
-                                                in_name_section = true;
-                                            } else if in_name_section
-                                                && !line.is_empty()
-                                                && !line.starts_with('%')
-                                            {
-                                                official_pkgs.insert(line.to_string());
-                                                break;
-                                            } else if line.starts_with('%') {
-                                                in_name_section = false;
+                                            // Look for desc files: "pkgname-version/desc"
+                                            if path_str.ends_with("/desc") {
+                                                let mut content = String::new();
+                                                if entry.read_to_string(&mut content).is_ok() {
+                                                    // Parse the desc file to get NAME field
+                                                    let mut in_name_section = false;
+                                                    for line in content.lines() {
+                                                        let line = line.trim();
+                                                        if line == "%NAME%" {
+                                                            in_name_section = true;
+                                                        } else if in_name_section
+                                                            && !line.is_empty()
+                                                            && !line.starts_with('%')
+                                                        {
+                                                            official_pkgs.insert(line.to_string());
+                                                            break;
+                                                        } else if line.starts_with('%') {
+                                                            in_name_section = false;
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -107,54 +143,58 @@ impl Paru {
             }
         }
 
-        // Now check all installed packages - if not in official_pkgs, it's foreign (AUR)
-        for entry in fs::read_dir(local_path)? {
-            let entry = entry?;
-            let path = entry.path();
+        // Now check all installed packages from ALL strata - if not in official_pkgs, it's foreign (AUR)
+        for local_path in &all_local_paths {
+            if let Ok(entries) = fs::read_dir(local_path) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let path = entry.path();
 
-            if !path.is_dir() {
-                continue;
-            }
-
-            let desc_file = path.join("desc");
-            if !desc_file.exists() {
-                continue;
-            }
-
-            let content = fs::read_to_string(desc_file)?;
-            let mut pkg_name = None;
-            let mut pkg_version = None;
-            let mut pkg_desc = None;
-            let mut current_field = String::new();
-
-            for line in content.lines() {
-                let line = line.trim();
-                if line.starts_with('%') && line.ends_with('%') {
-                    current_field = line.trim_matches('%').to_string();
-                } else if !line.is_empty() && !current_field.is_empty() {
-                    match current_field.as_str() {
-                        "NAME" if pkg_name.is_none() => pkg_name = Some(line.to_string()),
-                        "VERSION" if pkg_version.is_none() => pkg_version = Some(line.to_string()),
-                        "DESC" if pkg_desc.is_none() => pkg_desc = Some(line.to_string()),
-                        _ => {}
+                    if !path.is_dir() {
+                        continue;
                     }
-                }
-            }
 
-            if let Some(name) = pkg_name {
-                // If package is NOT in any sync database, it's foreign (AUR)
-                if !official_pkgs.contains(&name) {
-                    packages.push(Package {
-                        name,
-                        version: pkg_version,
-                        description: pkg_desc.unwrap_or_default(),
-                        repo: "aur".to_string(),
-                        manager: "aur".to_string(),
-                        installed: true,
-                        homepage: String::new(),
-                        license: String::new(),
-                        size: None,
-                    });
+                    let desc_file = path.join("desc");
+                    if !desc_file.exists() {
+                        continue;
+                    }
+
+                    if let Ok(content) = fs::read_to_string(desc_file) {
+                        let mut pkg_name = None;
+                        let mut pkg_version = None;
+                        let mut pkg_desc = None;
+                        let mut current_field = String::new();
+
+                        for line in content.lines() {
+                            let line = line.trim();
+                            if line.starts_with('%') && line.ends_with('%') {
+                                current_field = line.trim_matches('%').to_string();
+                            } else if !line.is_empty() && !current_field.is_empty() {
+                                match current_field.as_str() {
+                                    "NAME" if pkg_name.is_none() => pkg_name = Some(line.to_string()),
+                                    "VERSION" if pkg_version.is_none() => pkg_version = Some(line.to_string()),
+                                    "DESC" if pkg_desc.is_none() => pkg_desc = Some(line.to_string()),
+                                    _ => {}
+                                }
+                            }
+                        }
+
+                        if let Some(name) = pkg_name {
+                            // If package is NOT in any sync database, it's foreign (AUR)
+                            if !official_pkgs.contains(&name) {
+                                packages.push(Package {
+                                    name,
+                                    version: pkg_version,
+                                    description: pkg_desc.unwrap_or_default(),
+                                    repo: "aur".to_string(),
+                                    manager: "aur".to_string(),
+                                    installed: true,
+                                    homepage: String::new(),
+                                    license: String::new(),
+                                    size: None,
+                                });
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -187,45 +227,13 @@ impl PackageManager for Paru {
     }
 
     fn list_all(&self) -> Result<Vec<Package>> {
-        // Try to load from pmux cache first
-        if let Some(cache_dir) = dirs::cache_dir() {
-            let aur_list = cache_dir
-                .join("pmux")
-                .join("repos")
-                .join("aur-packages.txt");
-            if aur_list.exists() {
-                // Use mmap for zero-copy
-                let file = fs::File::open(aur_list)?;
-                let mmap = unsafe { memmap2::Mmap::map(&file)? };
-                let content = std::str::from_utf8(&mmap)?;
-
-                // Count lines for pre-allocation
-                let line_count = content.bytes().filter(|&b| b == b'\n').count();
-                let mut packages = Vec::with_capacity(line_count);
-
-                // Fast line parsing
-                for line in content.lines() {
-                    if line.is_empty() {
-                        continue;
-                    }
-
-                    packages.push(Package {
-                        name: line.trim().to_string(),
-                        version: None,
-                        description: String::new(),
-                        repo: "aur".to_string(),
-                        manager: "aur".to_string(),
-                        installed: false,
-                        homepage: String::new(),
-                        license: String::new(),
-                        size: None,
-                    });
-                }
-
-                return Ok(packages);
-            }
+        // Load from redb cache
+        use crate::cache::CacheManager;
+        let cache = CacheManager::new()?;
+        if let Some(packages) = cache.get("aur_all")? {
+            return Ok(packages);
         }
-
+        
         Ok(vec![])
     }
 
