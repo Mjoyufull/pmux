@@ -50,6 +50,7 @@ pmux -Syy  # Sync repos and build cache
 ```
 
 ## Usage
+<img width="1920" height="1080" alt="Screenshot_20260118-172721" src="https://github.com/user-attachments/assets/7c7ca687-176c-420f-982c-393feb3abccc" />
 
 ### Interactive mode
 ```bash
@@ -82,6 +83,7 @@ pmux -Qi firefox  # Package info
 Mouse support: click to select, scroll to navigate, hover to highlight.
 
 ### Filtering by package manager
+<img width="1098" height="1080" alt="Screenshot_20260118-172737" src="https://github.com/user-attachments/assets/e411c920-b0eb-4911-9c8b-ce3ab8ba03f2" />
 
 Type `@` followed by the package manager name:
 - `@pacman` - Arch repos
