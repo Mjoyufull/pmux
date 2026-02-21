@@ -740,9 +740,12 @@ pub fn load_packages_before_tui(
 pub fn run<B: Backend>(
     terminal: &mut Terminal<B>,
     opts: crate::cli::TuiOpts,
-    config: Config,
+    _config: Config,
     mut app: App,
-) -> Result<Option<String>> {
+) -> Result<Option<String>>
+where
+    B::Error: std::error::Error + Send + Sync + 'static,
+{
     // Pre-fill search if provided
     if let Some(search) = opts.search_string {
         app.query = search.clone();
@@ -762,7 +765,7 @@ pub fn run<B: Backend>(
 
     loop {
         terminal.draw(|f| {
-            let size = f.size();
+            let size = f.area();
 
             // Main layout: left column and right column (configurable)
             let right_width = app.config.layout.right_column_width_percent;
@@ -1371,7 +1374,7 @@ pub fn run<B: Backend>(
                 let installed_start = 1; // After top border (row 0 is border, row 1 is first content)
                 // installed_end should be exclusive, so height - 1 means we can click up to height - 2
                 // But we need to make sure we can click the last visible row, so use height (exclusive)
-                let installed_end = term_size.height; // Exclusive: can click up to height - 1 (which is the bottom border, but we check < installed_end)
+                let _installed_end = term_size.height; // Exclusive: can click up to height - 1 (which is the bottom border, but we check < installed_end)
                 let installed_column_start = left_column_width;
 
                 match mouse.kind {

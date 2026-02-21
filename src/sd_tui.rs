@@ -357,7 +357,10 @@ pub fn run<B: Backend>(
     _opts: crate::cli::SdOpts,
     _config: Config,
     mut app: SdApp,
-) -> Result<SdResult> {
+) -> Result<SdResult>
+where
+    B::Error: std::error::Error + Send + Sync + 'static,
+{
     // If query provided, search immediately
     if !app.query.is_empty() {
         app.search();
@@ -367,7 +370,7 @@ pub fn run<B: Backend>(
 
     loop {
         terminal.draw(|f| {
-            let size = f.size();
+            let size = f.area();
 
             let results_height = app.config.sd.results_height;
             let center_height = size.height.saturating_sub(results_height + 2 + 7);

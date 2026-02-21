@@ -336,7 +336,7 @@ fn handle_remove(opts: cli::RemoveOpts, config: &config::Config) -> eyre::Result
     for pkg_arg in &opts.packages {
         if pkg_arg.starts_with('@') {
             // Handle @manager package syntax
-            if let Some(idx) = pkg_arg.find(' ') {
+            if let Some(_idx) = pkg_arg.find(' ') {
                 // This case might be split by shell, so we might get "@manager" and "package" as separate args
                 // But here we assume "pmux -R @manager package" results in separate args in opts.packages
                 // Wait, CLI parsing splits args. So "@nix" and "nano" are separate elements in opts.packages?

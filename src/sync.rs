@@ -775,7 +775,7 @@ impl RepoSync {
         use quick_xml::events::Event;
         
         let mut reader = Reader::from_str(xml);
-        reader.trim_text(true);
+        reader.config_mut().trim_text(true);
         
         let mut in_primary = false;
         let mut buf = Vec::new();
@@ -830,7 +830,7 @@ impl RepoSync {
         use quick_xml::events::Event;
         
         let mut reader = Reader::from_str(xml);
-        reader.trim_text(true);
+        reader.config_mut().trim_text(true);
         
         let mut packages = Vec::new();
         let mut buf = Vec::new();
@@ -897,12 +897,13 @@ impl RepoSync {
                 }
                 Ok(Event::Text(e)) => {
                     if !current_element.is_empty() {
-                        if let Ok(text) = e.unescape() {
+                        if let Ok(text) = reader.decoder().decode(e.as_ref()) {
+                            let unescaped = quick_xml::escape::unescape(&text).unwrap_or_else(|_| text.clone());
                             match current_element.as_str() {
-                                "name" => current_name = text.to_string(),
-                                "desc" if current_desc.is_empty() => current_desc = text.to_string(),
-                                "url" => current_url = text.to_string(),
-                                "license" => current_license = text.to_string(),
+                                "name" => current_name = unescaped.to_string(),
+                                "desc" if current_desc.is_empty() => current_desc = unescaped.to_string(),
+                                "url" => current_url = unescaped.to_string(),
+                                "license" => current_license = unescaped.to_string(),
                                 _ => {}
                             }
                         }

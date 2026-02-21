@@ -232,7 +232,7 @@ impl PackageManager for Pkgit {
     }
 
     #[allow(dead_code)]
-    fn search(&self, query: &str) -> Result<Vec<Package>> {
+    fn search(&self, _query: &str) -> Result<Vec<Package>> {
         // pkgit doesn't have a native search API
         // Just return all packages and let pmux filter
         self.list_all()
